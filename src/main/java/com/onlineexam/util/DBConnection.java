@@ -8,7 +8,7 @@ public class DBConnection {
 
     private static final String URL = "jdbc:mysql://localhost:3306/online_exam_db";
     private static final String USER = "root";
-    private static final String PASSWORD = "YOUR_PASSWORD_HERE";
+    private static final String PASSWORD = "Exam@1234";
 
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);

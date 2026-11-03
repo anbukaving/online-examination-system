@@ -1,14 +1,16 @@
 package com.onlineexam.model;
 
-public class Admin {
-    private int adminId;
-    private String username;
+public class Admin extends User {
 
     public Admin(int adminId, String username) {
-        this.adminId = adminId;
-        this.username = username;
+        super(adminId, username);
     }
 
-    public int getAdminId() { return adminId; }
-    public String getUsername() { return username; }
+    public int getAdminId() { return getId(); }
+    public String getUsername() { return getName(); }
+
+    @Override
+    public String getRole() {
+        return "ADMIN";
+    }
 }

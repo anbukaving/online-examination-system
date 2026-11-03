@@ -10,10 +10,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SubjectDAO {
+// POLYMORPHISM: SubjectDAO is a CrudDAO<Subject>
+public class SubjectDAO implements CrudDAO<Subject> {
 
-    // CREATE: add a new subject
-    public boolean addSubject(Subject subject) {
+    @Override
+    public boolean add(Subject subject) {
         String sql = "INSERT INTO subjects (subject_name, description) VALUES (?, ?)";
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -26,8 +27,8 @@ public class SubjectDAO {
         }
     }
 
-    // READ: get all subjects
-    public List<Subject> getAllSubjects() {
+    @Override
+    public List<Subject> getAll() {
         List<Subject> list = new ArrayList<>();
         String sql = "SELECT * FROM subjects ORDER BY subject_id";
         try (Connection con = DBConnection.getConnection();
@@ -46,14 +47,14 @@ public class SubjectDAO {
         return list;
     }
 
-    // UPDATE: change name and description of a subject
-    public boolean updateSubject(int id, String newName, String newDescription) {
+    @Override
+    public boolean update(Subject subject) {
         String sql = "UPDATE subjects SET subject_name = ?, description = ? WHERE subject_id = ?";
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, newName);
-            ps.setString(2, newDescription);
-            ps.setInt(3, id);
+            ps.setString(1, subject.getSubjectName());
+            ps.setString(2, subject.getDescription());
+            ps.setInt(3, subject.getSubjectId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.out.println("Update subject failed: " + e.getMessage());
@@ -61,8 +62,8 @@ public class SubjectDAO {
         }
     }
 
-    // DELETE: remove a subject (its exams and questions are removed too)
-    public boolean deleteSubject(int id) {
+    @Override
+    public boolean delete(int id) {
         String sql = "DELETE FROM subjects WHERE subject_id = ?";
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -72,5 +73,25 @@ public class SubjectDAO {
             System.out.println("Delete subject failed: " + e.getMessage());
             return false;
         }
+    }
+
+    // ---- Old method names, kept so Main.java still works ----
+
+    public boolean addSubject(Subject subject) {
+        return add(subject);
+    }
+
+    public List<Subject> getAllSubjects() {
+        return getAll();
+    }
+
+    public boolean updateSubject(int id, String newName, String newDescription) {
+        Subject s = new Subject(newName, newDescription);
+        s.setSubjectId(id);
+        return update(s);
+    }
+
+    public boolean deleteSubject(int id) {
+        return delete(id);
     }
 }

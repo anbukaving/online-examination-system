@@ -50,7 +50,7 @@ public class Main {
         }
     }
 
-    // ---------------- STUDENT ----------------
+    // ================= STUDENT =================
 
     private static void registerStudent() {
         System.out.println("\n--- Student Registration ---");
@@ -110,7 +110,8 @@ public class Main {
             System.out.println("1. View available exams");
             System.out.println("2. Take an exam");
             System.out.println("3. My previous results");
-            System.out.println("4. Logout");
+            System.out.println("4. View / update my profile");
+            System.out.println("5. Logout");
             System.out.print("Enter choice: ");
             String choice = sc.nextLine().trim();
 
@@ -118,12 +119,42 @@ public class Main {
                 case "1" -> viewExams();
                 case "2" -> takeExam(student);
                 case "3" -> viewMyResults(student);
-                case "4" -> {
+                case "4" -> profile(student);
+                case "5" -> {
                     System.out.println("Logged out.");
                     return;
                 }
                 default -> System.out.println("Invalid choice. Try again.");
             }
+        }
+    }
+
+    private static void profile(Student student) {
+        System.out.println("\n--- My Profile ---");
+        student.displayInfo();   // polymorphism: Student's own displayInfo()
+        System.out.println("   Phone: " + student.getPhone());
+        System.out.print("Update profile? (yes/no): ");
+        if (!sc.nextLine().trim().equalsIgnoreCase("yes")) return;
+
+        System.out.print("New full name: ");
+        String name = sc.nextLine().trim();
+        System.out.print("New phone (10 digits, optional): ");
+        String phone = sc.nextLine().trim();
+
+        if (name.isEmpty()) {
+            System.out.println("Name cannot be empty.");
+            return;
+        }
+        if (!phone.isEmpty() && !phone.matches("\\d{10}")) {
+            System.out.println("Phone must be exactly 10 digits.");
+            return;
+        }
+        if (studentDAO.updateProfile(student.getStudentId(), name, phone)) {
+            student.setFullName(name);
+            student.setPhone(phone);
+            System.out.println("Profile updated.");
+        } else {
+            System.out.println("Update failed.");
         }
     }
 
@@ -136,13 +167,7 @@ public class Main {
         int examId = readInt("Enter exam ID to take: ");
         if (examId < 0) return;
 
-        Exam exam = null;
-        for (Exam e : examDAO.getAllExams()) {
-            if (e.getExamId() == examId) {
-                exam = e;
-                break;
-            }
-        }
+        Exam exam = findExam(examId);
         if (exam == null) {
             System.out.println("No exam with that ID.");
             return;
@@ -165,7 +190,6 @@ public class Main {
         int correct = 0, incorrect = 0, unanswered = 0;
 
         for (int i = 0; i < questions.size(); i++) {
-            // TIMER CHECK: if time is over, the rest are unanswered and the exam is submitted
             if (System.currentTimeMillis() >= endTime) {
                 System.out.println("\n*** TIME IS UP! Submitting your exam automatically. ***");
                 for (int j = i; j < questions.size(); j++) {
@@ -238,7 +262,7 @@ public class Main {
         }
     }
 
-    // ---------------- ADMIN ----------------
+    // ================= ADMIN =================
 
     private static void adminLogin() {
         System.out.println("\n--- Admin Login ---");
@@ -261,7 +285,8 @@ public class Main {
             System.out.println("1. Manage subjects");
             System.out.println("2. Manage exams");
             System.out.println("3. Manage questions");
-            System.out.println("4. Logout");
+            System.out.println("4. Manage students");
+            System.out.println("5. Logout");
             System.out.print("Enter choice: ");
             String choice = sc.nextLine().trim();
 
@@ -269,7 +294,8 @@ public class Main {
                 case "1" -> subjectMenu();
                 case "2" -> examMenu();
                 case "3" -> questionMenu();
-                case "4" -> {
+                case "4" -> studentAdminMenu();
+                case "5" -> {
                     System.out.println("Logged out.");
                     return;
                 }
@@ -353,8 +379,7 @@ public class Main {
         int id = readInt("Enter subject ID to delete: ");
         if (id < 0) return;
         System.out.print("This also deletes its exams and questions. Type YES to confirm: ");
-        String confirm = sc.nextLine().trim();
-        if (!confirm.equals("YES")) {
+        if (!sc.nextLine().trim().equals("YES")) {
             System.out.println("Cancelled.");
             return;
         }
@@ -369,14 +394,18 @@ public class Main {
             System.out.println("\n--- Manage Exams ---");
             System.out.println("1. Add exam");
             System.out.println("2. View all exams");
-            System.out.println("3. Back");
+            System.out.println("3. Update exam");
+            System.out.println("4. Delete exam");
+            System.out.println("5. Back");
             System.out.print("Enter choice: ");
             String choice = sc.nextLine().trim();
 
             switch (choice) {
                 case "1" -> addExam();
                 case "2" -> viewExams();
-                case "3" -> {
+                case "3" -> updateExam();
+                case "4" -> deleteExam();
+                case "5" -> {
                     return;
                 }
                 default -> System.out.println("Invalid choice. Try again.");
@@ -424,21 +453,61 @@ public class Main {
         }
     }
 
+    private static void updateExam() {
+        viewExams();
+        int id = readInt("Enter exam ID to update: ");
+        if (id < 0) return;
+        Exam e = findExam(id);
+        if (e == null) {
+            System.out.println("No exam with that ID.");
+            return;
+        }
+
+        System.out.print("New title: ");
+        String title = sc.nextLine().trim();
+        int duration = readInt("New duration in minutes: ");
+        int totalMarks = readInt("New total marks: ");
+        int perQuestion = readInt("New marks per question: ");
+
+        if (title.isEmpty() || duration <= 0 || totalMarks <= 0 || perQuestion <= 0) {
+            System.out.println("Invalid details. Nothing changed.");
+            return;
+        }
+        e.setExamTitle(title);
+        e.setDurationMinutes(duration);
+        e.setTotalMarks(totalMarks);
+        e.setMarksPerQuestion(perQuestion);
+        System.out.println(examDAO.update(e) ? "Exam updated." : "Update failed.");
+    }
+
+    private static void deleteExam() {
+        viewExams();
+        int id = readInt("Enter exam ID to delete: ");
+        if (id < 0) return;
+        System.out.print("This also deletes its questions and results. Type YES to confirm: ");
+        if (!sc.nextLine().trim().equals("YES")) {
+            System.out.println("Cancelled.");
+            return;
+        }
+        System.out.println(examDAO.delete(id) ? "Exam deleted." : "Delete failed (check the ID).");
+    }
+
+    private static Exam findExam(int examId) {
+        for (Exam e : examDAO.getAllExams()) {
+            if (e.getExamId() == examId) {
+                return e;
+            }
+        }
+        return null;
+    }
+
     // ---------------- QUESTIONS ----------------
 
     private static void questionMenu() {
         viewExams();
         int examId = readInt("Enter exam ID to manage its questions: ");
         if (examId < 0) return;
-
-        boolean found = false;
-        for (Exam e : examDAO.getAllExams()) {
-            if (e.getExamId() == examId) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
+        if (findExam(examId) == null) {
             System.out.println("No exam with that ID.");
             return;
         }
@@ -447,14 +516,18 @@ public class Main {
             System.out.println("\n--- Manage Questions (Exam ID " + examId + ") ---");
             System.out.println("1. Add question");
             System.out.println("2. View questions");
-            System.out.println("3. Back");
+            System.out.println("3. Update question");
+            System.out.println("4. Delete question");
+            System.out.println("5. Back");
             System.out.print("Enter choice: ");
             String choice = sc.nextLine().trim();
 
             switch (choice) {
                 case "1" -> addQuestion(examId);
                 case "2" -> viewQuestions(examId);
-                case "3" -> {
+                case "3" -> updateQuestion(examId);
+                case "4" -> deleteQuestion(examId);
+                case "5" -> {
                     return;
                 }
                 default -> System.out.println("Invalid choice. Try again.");
@@ -462,7 +535,8 @@ public class Main {
         }
     }
 
-    private static void addQuestion(int examId) {
+    // Asks for the question details. Returns null if something is invalid.
+    private static Question askQuestion(int examId) {
         System.out.print("Question: ");
         String text = sc.nextLine().trim();
         System.out.print("Option A: ");
@@ -478,11 +552,11 @@ public class Main {
 
         if (text.isEmpty() || a.isEmpty() || b.isEmpty() || c.isEmpty() || d.isEmpty()) {
             System.out.println("Question and all four options are required.");
-            return;
+            return null;
         }
         if (!correct.matches("[ABCD]")) {
             System.out.println("Correct option must be A, B, C or D.");
-            return;
+            return null;
         }
 
         Question q = new Question();
@@ -493,14 +567,20 @@ public class Main {
         q.setOptionC(c);
         q.setOptionD(d);
         q.setCorrectOption(correct);
+        return q;
+    }
+
+    private static void addQuestion(int examId) {
+        Question q = askQuestion(examId);
+        if (q == null) return;
         System.out.println(questionDAO.addQuestion(q) ? "Question added." : "Could not add question.");
     }
 
-    private static void viewQuestions(int examId) {
+    private static boolean viewQuestions(int examId) {
         List<Question> list = questionDAO.getQuestionsByExam(examId);
         if (list.isEmpty()) {
             System.out.println("No questions yet for this exam.");
-            return;
+            return false;
         }
         for (Question q : list) {
             System.out.println("\n[ID " + q.getQuestionId() + "] " + q.getQuestionText());
@@ -510,6 +590,73 @@ public class Main {
             System.out.println("   D) " + q.getOptionD());
             System.out.println("   Correct answer: " + q.getCorrectOption());
         }
+        return true;
+    }
+
+    private static void updateQuestion(int examId) {
+        if (!viewQuestions(examId)) return;
+        int id = readInt("Enter question ID to update: ");
+        if (id < 0) return;
+        Question q = askQuestion(examId);
+        if (q == null) return;
+        q.setQuestionId(id);
+        System.out.println(questionDAO.updateQuestion(q) ? "Question updated." : "Update failed (check the ID).");
+    }
+
+    private static void deleteQuestion(int examId) {
+        if (!viewQuestions(examId)) return;
+        int id = readInt("Enter question ID to delete: ");
+        if (id < 0) return;
+        System.out.println(questionDAO.deleteQuestion(id, examId) ? "Question deleted." : "Delete failed (check the ID).");
+    }
+
+    // ---------------- STUDENTS (admin) ----------------
+
+    private static void studentAdminMenu() {
+        while (true) {
+            System.out.println("\n--- Manage Students ---");
+            System.out.println("1. View all students");
+            System.out.println("2. Delete a student");
+            System.out.println("3. Back");
+            System.out.print("Enter choice: ");
+            String choice = sc.nextLine().trim();
+
+            switch (choice) {
+                case "1" -> viewStudents();
+                case "2" -> deleteStudent();
+                case "3" -> {
+                    return;
+                }
+                default -> System.out.println("Invalid choice. Try again.");
+            }
+        }
+    }
+
+    private static boolean viewStudents() {
+        List<Student> students = studentDAO.getAllStudents();
+        if (students.isEmpty()) {
+            System.out.println("No students found.");
+            return false;
+        }
+        System.out.println("\nID   | Name                 | Email                | Phone");
+        System.out.println("-----+----------------------+----------------------+-----------");
+        for (Student s : students) {
+            System.out.printf("%-4d | %-20s | %-20s | %s%n",
+                    s.getStudentId(), s.getFullName(), s.getEmail(), s.getPhone());
+        }
+        return true;
+    }
+
+    private static void deleteStudent() {
+        if (!viewStudents()) return;
+        int id = readInt("Enter student ID to delete: ");
+        if (id < 0) return;
+        System.out.print("This also deletes the student's results. Type YES to confirm: ");
+        if (!sc.nextLine().trim().equals("YES")) {
+            System.out.println("Cancelled.");
+            return;
+        }
+        System.out.println(studentDAO.deleteStudent(id) ? "Student deleted." : "Delete failed (check the ID).");
     }
 
     // ---------------- HELPER ----------------
